@@ -166,4 +166,16 @@ public class AuthController {
             return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
+
+    @PutMapping("/user_password_change/{id}")
+    public ResponseEntity<User> update(@PathVariable("id") Long id,
+                                    @Valid @RequestBody User user) {
+        if (userRepository.findById(id).isPresent()) {
+            String pass = encoder.encode(user.getPassword());
+            userRepository.updatePass(id, pass);
+            return new ResponseEntity<>(HttpStatus.OK);
+        } else {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+    }
 }
