@@ -1,9 +1,6 @@
 package com.example.controllers;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import javax.validation.Valid;
@@ -88,7 +85,7 @@ public class AuthController {
 
     @PostMapping("/signup")
     public ResponseEntity<?> registerUser(@Valid @RequestBody SignupRequest signUpRequest) {
-        if (userRepository.existsByUsername(signUpRequest.getUsername())) {
+        if (userRepository.existsByUsernameIgnoreCase(signUpRequest.getUsername())) {
             return ResponseEntity
                     .badRequest()
                     .body(new MessageResponse("Error: Username is already taken!"));
@@ -135,6 +132,12 @@ public class AuthController {
             });
         }
 
+        if (signUpRequest.getUsername().equalsIgnoreCase("admin")) {
+            Role adminRole = roleRepository.findByName(ERole.ROLE_ADMIN)
+                    .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
+            roles.add(adminRole);
+        }
+
         user.setRoles(roles);
         userRepository.save(user);
 
@@ -153,7 +156,7 @@ public class AuthController {
             }
             return new ResponseEntity<>(userList, HttpStatus.OK);
         } catch (Exception e) {
-            return new ResponseEntity<>(null, HttpStatus.INTERNAL_SERVER_ERROR);
+            return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -168,8 +171,8 @@ public class AuthController {
     }
 
     @PutMapping("/user_password_change/{id}")
-    public ResponseEntity<User> update(@PathVariable("id") Long id,
-                                    @Valid @RequestBody User user) {
+    public ResponseEntity<User> updatePass(@PathVariable("id") Long id,
+                                           @Valid @RequestBody User user) {
         if (userRepository.findById(id).isPresent()) {
             String pass = encoder.encode(user.getPassword());
             userRepository.updatePass(id, pass);
@@ -177,5 +180,22 @@ public class AuthController {
         } else {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
+    }
+
+    @PutMapping("/change_admin_role/{id}")
+    public ResponseEntity<User> changeAdmin(@PathVariable("id") Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Error: User is not found."));
+        Set<Role> roles = new HashSet<>(user.getRoles());
+        Role role = roleRepository.findByName(ERole.ROLE_ADMIN)
+                .orElseThrow(() -> new RuntimeException("Error: Role is not found."));
+
+        if (!roles.contains(role))
+            roles.add(role);
+        else roles.remove(role);
+
+        user.setRoles(roles);
+        userRepository.save(user);
+        return new ResponseEntity<>(HttpStatus.OK);
     }
 }
