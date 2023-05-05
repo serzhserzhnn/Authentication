@@ -8,6 +8,7 @@ import javax.validation.Valid;
 import com.example.models.ERole;
 import com.example.models.Role;
 import com.example.models.User;
+import com.example.service.SendService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -61,6 +62,13 @@ public class AuthController {
 
     @Autowired
     JwtUtils jwtUtils;
+
+    SendService sendService;
+
+    @Autowired
+    private void setSendService(SendService sendService) {
+        this.sendService = sendService;
+    }
 
     @PostMapping("/signin")
     public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
@@ -164,6 +172,8 @@ public class AuthController {
     public ResponseEntity<HttpStatus> deleteCategory(@PathVariable("id") Long id) {
         try {
             userRepository.deleteById(id);
+            // sending message to list-service
+            sendService.sendUserRemove("REMOVE", id.toString());
             return new ResponseEntity<>(HttpStatus.NO_CONTENT);
         } catch (Exception e) {
             return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
