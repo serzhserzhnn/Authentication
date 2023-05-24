@@ -15,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
@@ -70,6 +71,10 @@ public class AuthController {
         this.sendService = sendService;
     }
 
+    /**
+     * Запрос для входа пользователя
+     *
+     */
     @PostMapping("/signin")
     public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
 
@@ -81,7 +86,7 @@ public class AuthController {
 
         UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
         List<String> roles = userDetails.getAuthorities().stream()
-                .map(item -> item.getAuthority())
+                .map(GrantedAuthority::getAuthority)
                 .collect(Collectors.toList());
 
         return ResponseEntity.ok(new JwtResponse(jwt,
@@ -91,15 +96,19 @@ public class AuthController {
                 roles));
     }
 
+    /**
+     * Запрос на регистрацию пользователя
+     *
+     */
     @PostMapping("/signup")
     public ResponseEntity<?> registerUser(@Valid @RequestBody SignupRequest signUpRequest) {
-        if (userRepository.existsByUsernameIgnoreCase(signUpRequest.getUsername())) {
+        if (Boolean.TRUE.equals(userRepository.existsByUsernameIgnoreCase(signUpRequest.getUsername()))) {
             return ResponseEntity
                     .badRequest()
                     .body(new MessageResponse("Error: Username is already taken!"));
         }
 
-        if (userRepository.existsByEmail(signUpRequest.getEmail())) {
+        if (Boolean.TRUE.equals(userRepository.existsByEmail(signUpRequest.getEmail()))) {
             return ResponseEntity
                     .badRequest()
                     .body(new MessageResponse("Error: Email is already in use!"));
@@ -152,6 +161,12 @@ public class AuthController {
         return ResponseEntity.ok(new MessageResponse("User registered successfully!"));
     }
 
+    /**
+     * Запрос списка пользователей по логину пользователя
+     *
+     * @param name имя
+     * @return JSON-массив {@link User}
+     */
     @GetMapping("/users")
     public ResponseEntity<List<User>> allUsers(@RequestParam(required = false) String name) {
         try {
@@ -168,6 +183,11 @@ public class AuthController {
         }
     }
 
+    /**
+     * Запрос на удаление пользователя по id
+     *
+     * @param id - id пользователя
+     */
     @DeleteMapping("/users/{id}")
     public ResponseEntity<HttpStatus> deleteCategory(@PathVariable("id") Long id) {
         try {
@@ -180,6 +200,12 @@ public class AuthController {
         }
     }
 
+    /**
+     * Запрос на изменение пароля по id пользователя
+     *
+     * @param id - id пользователя
+     * @return - status code 404 если не найден
+     */
     @PutMapping("/user_password_change/{id}")
     public ResponseEntity<User> updatePass(@PathVariable("id") Long id,
                                            @Valid @RequestBody User user) {
@@ -192,6 +218,11 @@ public class AuthController {
         }
     }
 
+    /**
+     * Запрос на добавление роли администратора по id пользователя
+     *
+     * @param id - id пользователя
+     */
     @PutMapping("/change_admin_role/{id}")
     public ResponseEntity<User> changeAdmin(@PathVariable("id") Long id) {
         User user = userRepository.findById(id)
